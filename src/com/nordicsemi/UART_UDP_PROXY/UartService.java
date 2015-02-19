@@ -437,7 +437,7 @@ public class UartService extends Service implements UartRPCCallbacks {
 			Log.d(TAG, "sendOverUART(): encoded_data=[" + packet + "] length: " + packet.length() + "... splitting...");
 			List<String> list = this.splitEqually(packet,20);
 			for(int i=0;i<list.size();++i) {
-				Log.d(TAG, "sendOverUART(): sending over UART: data[" + i + "]=[" + list.get(i) + "](" + list.get(i).length() + ")");
+				this.m_ui.logAction("UDP","UART", list.get(i).getBytes());
 				this.sendData(list.get(i));
 			}
 		}
