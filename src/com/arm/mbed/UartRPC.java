@@ -18,7 +18,6 @@ public class UartRPC {
 	private static final int 	    SOCKET_CLOSE_FN = 0x02;
 	private static final int 	    SEND_DATA_FN    = 0x04;
 	private static final int 	    RECV_DATA_FN    = 0x08;
-	private static final int 	    NUM_FNs         = 4;
 	
 	private InetAddress 			m_address = null;
 	private int    					m_port = 0;
