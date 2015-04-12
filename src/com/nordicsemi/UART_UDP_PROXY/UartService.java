@@ -465,6 +465,7 @@ public class UartService extends Service implements UartRPCCallbacks {
 			}
 			else {
 				// just received an ACK... so no need to reply with another...
+				this.m_ui.logAction("UART", "UDP", trimmed_data.getBytes());
 				Log.d(TAG, "onDataReceived(): recevied ACK (OK)... continuing...");
 			}
 		}

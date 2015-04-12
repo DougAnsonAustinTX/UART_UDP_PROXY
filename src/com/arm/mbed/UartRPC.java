@@ -203,7 +203,7 @@ public class UartRPC {
 							byte[] data = p.getData();
 							int data_length = p.getLength();
 							if (data != null && data.length > 0) {
-								Log.d(TAG, "listener(): data length: " + data_length + " (data.length=" + data.length + ") ... sending over UART...");
+								Log.d(TAG, "listener(): data length: " + data_length + " (data.length=" + data_length + ") ... sending over UART...");
 								m_handler.sendOverUART(data,data_length);
 								Log.d(TAG, "listener(): send over UART completed");
 							}

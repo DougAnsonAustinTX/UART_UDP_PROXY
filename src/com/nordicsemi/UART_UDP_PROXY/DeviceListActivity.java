@@ -190,13 +190,11 @@ public class DeviceListActivity extends Activity {
         
         devRssiValues.put(device.getAddress(), rssi);
         if (!deviceFound) {
-        	deviceList.add(device);
-            mEmptyList.setVisibility(View.GONE);
-                 	
-        	
-
-            
-            deviceAdapter.notifyDataSetChanged();
+        	if (device.getName() != null && device.getName().length() > 0) {
+        		deviceList.add(device);
+        		mEmptyList.setVisibility(View.GONE);   
+        		deviceAdapter.notifyDataSetChanged();
+        	}
         }
     }
 

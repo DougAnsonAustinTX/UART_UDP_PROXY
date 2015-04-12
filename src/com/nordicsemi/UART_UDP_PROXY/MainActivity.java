@@ -18,6 +18,7 @@ package com.nordicsemi.UART_UDP_PROXY;
 
 import java.text.DateFormat;
 import java.util.Date;
+
 import com.nordicsemi.UART_UDP_PROXY.UartService;
 
 import android.app.Activity;
@@ -39,6 +40,7 @@ import android.os.Message;
 import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 import android.view.View;
+import android.view.WindowManager.LayoutParams;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
@@ -102,6 +104,9 @@ public class MainActivity extends Activity implements RadioGroup. OnCheckedChang
 	 	listAdapter.notifyDataSetChanged();
 	 	messageListView.invalidateViews();
        
+	 	// disable the screen saver
+	 	getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON);
+	 	
         // Handler Disconnect & Connect button
         btnConnectDisconnect.setOnClickListener(new View.OnClickListener() {
             @Override
