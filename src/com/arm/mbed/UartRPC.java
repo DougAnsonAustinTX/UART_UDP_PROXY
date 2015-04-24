@@ -19,6 +19,10 @@ public class UartRPC {
 	private static final int 	    SEND_DATA_FN    = 0x04;
 	private static final int 	    RECV_DATA_FN    = 0x08;
 	
+	// UDP Socket Config
+	private static final int	    SOCKET_TIMEOUT_MS = 20000;			// 20 seconds
+	private static final int		SOCKET_BUFFER_SIZE = 8192;			// 8K
+	
 	private InetAddress 			m_address = null;
 	private int    					m_port = 0;
 	
@@ -152,6 +156,10 @@ public class UartRPC {
 			// open the socket... 
 			Log.d(TAG, "rpc_open_socket(): opening UDP Socket: " + args[0].trim() + "@" + this.m_port);
 			this.m_socket = new DatagramSocket(this.m_port);
+			this.m_socket.setSoTimeout(SOCKET_TIMEOUT_MS);
+			this.m_socket.setReceiveBufferSize(SOCKET_BUFFER_SIZE);
+			this.m_socket.setSendBufferSize(SOCKET_BUFFER_SIZE);
+			this.m_socket.setReuseAddress(true);
 			Log.d(TAG, "rpc_open_socket(): creating the listeners...");
 			this.createListener();
 			
