@@ -29,7 +29,7 @@
         android:layout_alignParentRight="true"
         android:layout_alignParentBottom="true"
         android:text="@string/paired"
-        android:textSize="12dp" />
+        android:textSize="14sp" />
 
     <TextView
         android:id="@+id/rssi"
@@ -38,20 +38,30 @@
         android:layout_alignParentRight="true"
         android:layout_alignParentTop="true"
         android:layout_below="@+id/paired"
-        android:textSize="12dp" />
+        android:textSize="14sp" />
 
     <TextView
         android:id="@+id/name"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
-        android:textSize="14dp" />
+        android:textSize="14sp" />
 
     <TextView
         android:id="@+id/address"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@+id/name"
-        android:textSize="10dp" />
+        android:textSize="14sp" />
+  
+    <!--  
+    <Button
+	    android:id="@+id/autoButton"
+	    android:layout_width="wrap_content"
+	    android:layout_height="wrap_content"
+	    android:layout_below="@+id/rssi"
+	    android:layout_alignParentRight="true"
+	    android:text="Auto"
+	    android:textSize="14sp" /> -->
 
 </RelativeLayout>

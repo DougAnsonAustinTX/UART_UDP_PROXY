@@ -20,8 +20,8 @@ public class UartRPC {
 	private static final int 	    RECV_DATA_FN    = 0x08;
 	
 	// UDP Socket Config
-	private static final int	    SOCKET_TIMEOUT_MS = 20000;			// 20 seconds
-	private static final int		SOCKET_BUFFER_SIZE = 8192;			// 8K
+	private static final int	    SOCKET_TIMEOUT_MS = 2000;			// 2 seconds
+	private static final int		SOCKET_BUFFER_SIZE = 512;			// socket buffer size
 	
 	private InetAddress 			m_address = null;
 	private int    					m_port = 0;
@@ -47,9 +47,9 @@ public class UartRPC {
 	
 	private void stopListener() {
 		if (this.m_listener_thread  != null) {
-			this.m_do_run_listener = false;
 			try {
-				this.m_listener_thread.destroy();
+				this.m_do_run_listener = false;
+				this.m_listener_thread.join((SOCKET_TIMEOUT_MS+1000));
 				this.m_listener_thread = null;
 				this.m_listener = null;
 			}
@@ -159,6 +159,7 @@ public class UartRPC {
 			this.m_socket.setSoTimeout(SOCKET_TIMEOUT_MS);
 			this.m_socket.setReceiveBufferSize(SOCKET_BUFFER_SIZE);
 			this.m_socket.setSendBufferSize(SOCKET_BUFFER_SIZE);
+			this.m_socket.setBroadcast(false);
 			this.m_socket.setReuseAddress(true);
 			Log.d(TAG, "rpc_open_socket(): creating the listeners...");
 			this.createListener();
@@ -189,8 +190,8 @@ public class UartRPC {
 		
     private void closeSocket() {
     	if (this.m_socket != null) {
-    		this.m_socket.disconnect();
     		this.m_socket.close();
+    		this.m_socket.disconnect();
     	}
     	this.m_socket = null;
     }
@@ -201,7 +202,7 @@ public class UartRPC {
 			this.m_listener = new Runnable() {
 				@Override
 				public void run() {
-					byte[] receiveData = new byte[1024];
+					byte[] receiveData = new byte[SOCKET_BUFFER_SIZE];
 					while (m_do_run_listener) {
 						DatagramPacket p = new DatagramPacket(receiveData,receiveData.length);
 						Log.d(TAG, "listener(): waiting on receive()...");
@@ -216,8 +217,12 @@ public class UartRPC {
 								Log.d(TAG, "listener(): send over UART completed");
 							}
 						}
+						catch (java.net.SocketTimeoutException ex) {
+							Log.d(TAG, "listener(): timed out... retrying receive...");
+			        	}
 						catch (Exception ex) {
 							Log.d(TAG, "listener(): exception during receive(): " + ex.getMessage());
+							ex.printStackTrace();
 						}
 					}
 					Log.d(TAG, "listener(): exiting listener loop...");
@@ -267,10 +272,10 @@ public class UartRPC {
 						m_socket.send(m_send_packet);
 						m_send_status = true;
 						Log.d(TAG, "send() successful.");
-					}
+		        	}
 					catch (Exception ex) {
 						Log.d(TAG, "send() failed: " + ex.getMessage());
-						ex.printStackTrace();
+						//ex.printStackTrace();
 					}
 			    }
 			});

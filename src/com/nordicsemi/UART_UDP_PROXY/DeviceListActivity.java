@@ -21,14 +21,13 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-
+import com.arm.mbed.PreferenceManager;
+import com.nordicsemi.UART_UDP_PROXY.R.id;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothManager;
-import android.content.BroadcastReceiver;
-import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
@@ -37,8 +36,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Handler;
-import android.os.IBinder;
-import android.os.Message;
 import android.util.Log;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -68,8 +65,7 @@ public class DeviceListActivity extends Activity {
     private static final long SCAN_PERIOD = 10000; //10 seconds
     private Handler mHandler;
     private boolean mScanning;
-
-
+    private PreferenceManager mPrefMgr = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -81,6 +77,7 @@ public class DeviceListActivity extends Activity {
         android.view.WindowManager.LayoutParams layoutParams = this.getWindow().getAttributes();
         layoutParams.gravity=Gravity.TOP;
         layoutParams.y = 200;
+        mPrefMgr = new PreferenceManager(this,"UART_BLE_PROXY");
         mHandler = new Handler();
         // Use this check to determine whether BLE is supported on the device.  Then you can
         // selectively disable BLE-related features.
@@ -125,9 +122,7 @@ public class DeviceListActivity extends Activity {
         ListView newDevicesListView = (ListView) findViewById(R.id.new_devices);
         newDevicesListView.setAdapter(deviceAdapter);
         newDevicesListView.setOnItemClickListener(mDeviceClickListener);
-
-           scanLeDevice(true);
-
+        scanLeDevice(true);
     }
     
     private void scanLeDevice(final boolean enable) {
@@ -139,7 +134,6 @@ public class DeviceListActivity extends Activity {
                 public void run() {
 					mScanning = false;
                     mBluetoothAdapter.stopLeScan(mLeScanCallback);
-                        
                     cancelButton.setText(R.string.scan);
 
                 }
@@ -169,6 +163,9 @@ public class DeviceListActivity extends Activity {
                           @Override
                           public void run() {
                               addDevice(device,rssi);
+                              //final Button autoButton = (Button) findViewById(id.autoButton);
+                              //if (autoButton != null) autoButton.setVisibility(View.GONE);
+                              //if (autoButton != null) initAutoButton(autoButton,device.getName());
                           }
                       });
                    
@@ -196,6 +193,47 @@ public class DeviceListActivity extends Activity {
         		deviceAdapter.notifyDataSetChanged();
         	}
         }
+    }
+    
+    private String getDefaultAutoButtonText(String name) {
+    	String text = "Auto";
+    	
+    	if (name != null && name.length() > 0) {
+    		String def_name = this.mPrefMgr.getPreference("AUTO_SELECT", "");
+    		if (name.equalsIgnoreCase(def_name)) text = "Default";
+    	}
+    	
+    	return text;
+    }
+    
+    private void saveAuto(Button b) {
+    	String new_text_value = "Default";
+    	String def_name = this.mPrefMgr.getPreference("AUTO_SELECT", "");
+    	if (def_name != null && def_name.length() > 0) {
+    		if (def_name.equalsIgnoreCase((String)b.getHint())) {
+    			this.mPrefMgr.setPreference("AUTO_SELECT"," ");
+    			new_text_value = "Auto";
+	    		b.setText(new_text_value);
+    		}
+    		else {
+    			this.mPrefMgr.setPreference("AUTO_SELECT",(String)b.getHint());
+	    		b.setText(new_text_value);
+    		}
+    	}
+    	else {
+    		this.mPrefMgr.setPreference("AUTO_SELECT",(String)b.getHint());
+    		b.setText(new_text_value);
+    	}
+    }
+    
+    private void initAutoButton(Button button,String name) {
+    	button.setText(this.getDefaultAutoButtonText(name));
+    	button.setHint(name);
+    	button.setOnClickListener(new OnClickListener() {
+    	      public void onClick(View v) {
+    	    	  saveAuto((Button)v);
+    	      }
+    	});
     }
 
     @Override
