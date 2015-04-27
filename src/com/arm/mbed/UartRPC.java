@@ -20,8 +20,8 @@ public class UartRPC {
 	private static final int 	    RECV_DATA_FN    = 0x08;
 	
 	// UDP Socket Config
-	private static final int	    SOCKET_TIMEOUT_MS = 2000;			// 2 seconds
-	private static final int		SOCKET_BUFFER_SIZE = 512;			// socket buffer size
+	private static final int	    SOCKET_TIMEOUT_MS = 10000;			// 10 seconds
+	private static final int		SOCKET_BUFFER_SIZE = 4096;			// socket buffer size
 	
 	private InetAddress 			m_address = null;
 	private int    					m_port = 0;
