@@ -201,7 +201,7 @@ public class UartRPC {
 		if (this.m_listener == null) { 
 			this.m_listener = new Runnable() {
 				@Override
-				public void run() {
+				public synchronized void run() {
 					byte[] receiveData = new byte[SOCKET_BUFFER_SIZE];
 					while (m_do_run_listener) {
 						DatagramPacket p = new DatagramPacket(receiveData,receiveData.length);
@@ -266,7 +266,7 @@ public class UartRPC {
 			// spawn a thread to handle this to get off the UI thread
 			Thread thread = new Thread(new Runnable(){
 			    @Override
-			    public void run() {
+			    public synchronized void run() {
 		        	try {		    			
 						Log.d(TAG,"send() sending...");
 						m_socket.send(m_send_packet);
