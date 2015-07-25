@@ -16,8 +16,8 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.nordicsemi.UART_UDP_PROXY"
-    android:versionCode="1"
-    android:versionName="1.0" >
+    android:versionCode="2"
+    android:versionName="1.0.3" >
 
     <uses-sdk
         android:minSdkVersion="18"
@@ -26,13 +26,14 @@
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION"/>
 
     <application 
         android:label="@string/app_name"
         android:theme="@android:style/Theme.Holo.Light"
         android:icon="@drawable/nrfuart_hdpi_icon">
         <activity
-            android:name=".MainActivity"
+            android:name="com.nordicsemi.UART_UDP_PROXY.MainActivity"
             android:label="@string/app_name"
             android:windowSoftInputMode="stateHidden"
             android:configChanges="keyboardHidden|orientation|screenSize">
@@ -42,8 +43,8 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".DeviceListActivity" android:label="@string/app_name" android:theme="@android:style/Theme.Dialog"/>
-        <service android:enabled="true" android:name=".UartService" />
+        <activity android:name="com.nordicsemi.UART_UDP_PROXY.DeviceListActivity" android:label="@string/app_name" android:theme="@android:style/Theme.Dialog"/>
+        <service android:enabled="true" android:name="com.nordicsemi.UART_UDP_PROXY.UartService" />
     </application>
 
 </manifest>

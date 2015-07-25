@@ -54,7 +54,7 @@ public class UartService extends Service implements UartRPCCallbacks {
     private int mConnectionState = STATE_DISCONNECTED;
     
     // DA
-    private UartRPC m_uart_rpc = new UartRPC(this);
+    private UartRPC m_uart_rpc = null;
     private MainActivity m_ui = null;
 
     private static final int STATE_DISCONNECTED = 0;
@@ -185,6 +185,7 @@ public class UartService extends Service implements UartRPCCallbacks {
     public boolean initialize(MainActivity ui) {
     	// DA
     	this.m_ui = ui;
+    	new UartRPC(this,this.m_ui.getApplicationContext());
     	
         // For API level 18 and above, get a reference to BluetoothAdapter through
         // BluetoothManager.
@@ -409,6 +410,20 @@ public class UartService extends Service implements UartRPCCallbacks {
     
     // DA
     @Override
+    public boolean splitAndSendData(final String data) {
+    	boolean sent = false;
+    	List<String> list = this.splitEqually(data,20);
+    	if (list != null && list.size() > 0) {
+    		for(int i=0;i<list.size();++i) {
+    			this.sendData(list.get(i));
+    		}
+    		sent = true;
+    	}
+    	return sent;
+    }
+    
+    // DA
+    @Override
  	public void sendData(final String data) {
     	this.m_ui.logAction("UDP", "UART", data.getBytes());
     	this.writeRXCharacteristic(data.getBytes());
@@ -435,11 +450,7 @@ public class UartService extends Service implements UartRPCCallbacks {
 		String packet = this.m_uart_rpc.rpc_recv_data(data,length);
 		if (packet != null) {
 			Log.d(TAG, "sendOverUART(): encoded_data=[" + packet + "] length: " + packet.length() + "... splitting...");
-			List<String> list = this.splitEqually(packet,20);
-			for(int i=0;i<list.size();++i) {
-				//this.m_ui.logAction("UDP","UART", list.get(i).getBytes());
-				this.sendData(list.get(i));
-			}
+			this.splitAndSendData(packet);
 		}
 		else {
 			Log.d(TAG, "sendOverUART(): dropping null packet. Base64 encoding failed..");

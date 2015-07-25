@@ -19,6 +19,7 @@ package com.nordicsemi.UART_UDP_PROXY;
 import java.text.DateFormat;
 import java.util.Date;
 
+import com.nordicsemi.UART_UDP_PROXY.R;
 import com.nordicsemi.UART_UDP_PROXY.UartService;
 
 import android.app.Activity;

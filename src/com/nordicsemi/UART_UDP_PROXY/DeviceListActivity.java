@@ -21,8 +21,9 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import com.arm.mbed.PreferenceManager;
+import com.nordicsemi.UART_UDP_PROXY.R;
 import com.nordicsemi.UART_UDP_PROXY.R.id;
+import com.arm.mbed.PreferenceManager;
 
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;

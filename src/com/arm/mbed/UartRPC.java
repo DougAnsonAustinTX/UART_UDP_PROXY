@@ -4,6 +4,7 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 
+import android.content.Context;
 import android.util.Base64;
 import android.util.Log;
 
@@ -18,6 +19,7 @@ public class UartRPC {
 	private static final int 	    SOCKET_CLOSE_FN = 0x02;
 	private static final int 	    SEND_DATA_FN    = 0x04;
 	private static final int 	    RECV_DATA_FN    = 0x08;
+	private static final int 	    GET_LOCATION_FN = 0x08;
 	
 	// UDP Socket Config
 	private static final int	    SOCKET_TIMEOUT_MS = 10000;			// 10 seconds
@@ -39,10 +41,12 @@ public class UartRPC {
 	
 	private boolean					m_send_status = false;
 	private DatagramPacket			m_send_packet = null;
+	private MyLocation			    m_location = null;
 				
-	public UartRPC(UartRPCCallbacks handler) {
+	public UartRPC(UartRPCCallbacks handler,Context context) {
 		this.reset();
 		this.m_handler = handler;
+		this.m_location = new MyLocation(context);
 	}
 	
 	private void stopListener() {
@@ -121,6 +125,9 @@ public class UartRPC {
 					success = this.rpc_socket_open(this.m_args);
 					this.m_handler.ackSocketOpen(success);
 					break;
+				case GET_LOCATION_FN:
+					success = this.rpc_get_location(this.m_args);
+					break;
 				case SOCKET_CLOSE_FN:
 					success = this.rpc_socket_close(this.m_args);
 					break;
@@ -175,6 +182,38 @@ public class UartRPC {
 	}
 
 	public void close() { this.rpc_socket_close(null); }
+	
+	// RPC: close_socket()
+	private boolean rpc_get_location(String args) {
+		boolean status = false;
+		
+		try {
+			// get the current location
+			String location_payload = this.m_location.getLocation();
+			
+			// encode
+			byte data[] = location_payload.getBytes();
+			String encoded_data = this.encode(data,data.length);
+			
+			// packet
+			String packet = "[" + GET_LOCATION_FN + "|" + encoded_data + "]";
+			
+			// send the current location
+			Log.d(TAG,"rpc_get_location(): sending current location packet: " + packet);
+			
+			// split and send
+			status = this.m_handler.splitAndSendData(packet);
+			if (status == true)
+				Log.d(TAG,"rpc_get_location(): location sent successfully");
+			else 
+				Log.d(TAG,"rpc_get_location(): location send FAILED");
+		}
+		catch (Exception ex) {
+			Log.d(TAG,"rpc_get_location(): sendOverUART failed: " + ex.getMessage());
+		}
+		
+		return status;	
+	}
 	
 	// RPC: close_socket()
 	private boolean rpc_socket_close(String args) {
