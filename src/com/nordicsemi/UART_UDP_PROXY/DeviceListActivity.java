@@ -20,11 +20,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import com.nordicsemi.UART_UDP_PROXY.R;
-import com.nordicsemi.UART_UDP_PROXY.R.id;
 import com.arm.mbed.PreferenceManager;
-
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -57,16 +55,16 @@ public class DeviceListActivity extends Activity {
 
    // private BluetoothAdapter mBtAdapter;
     private TextView mEmptyList;
-    public static final String TAG = "DeviceListActivity";
+    public static final String TAG = "PROXY";
     
     List<BluetoothDevice> deviceList;
     private DeviceAdapter deviceAdapter;
-    private ServiceConnection onService = null;
+    protected ServiceConnection onService = null;
     Map<String, Integer> devRssiValues;
     private static final long SCAN_PERIOD = 10000; //10 seconds
     private Handler mHandler;
     private boolean mScanning;
-    private PreferenceManager mPrefMgr = null;
+    protected PreferenceManager mPrefMgr = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -195,47 +193,6 @@ public class DeviceListActivity extends Activity {
         	}
         }
     }
-    
-    private String getDefaultAutoButtonText(String name) {
-    	String text = "Auto";
-    	
-    	if (name != null && name.length() > 0) {
-    		String def_name = this.mPrefMgr.getPreference("AUTO_SELECT", "");
-    		if (name.equalsIgnoreCase(def_name)) text = "Default";
-    	}
-    	
-    	return text;
-    }
-    
-    private void saveAuto(Button b) {
-    	String new_text_value = "Default";
-    	String def_name = this.mPrefMgr.getPreference("AUTO_SELECT", "");
-    	if (def_name != null && def_name.length() > 0) {
-    		if (def_name.equalsIgnoreCase((String)b.getHint())) {
-    			this.mPrefMgr.setPreference("AUTO_SELECT"," ");
-    			new_text_value = "Auto";
-	    		b.setText(new_text_value);
-    		}
-    		else {
-    			this.mPrefMgr.setPreference("AUTO_SELECT",(String)b.getHint());
-	    		b.setText(new_text_value);
-    		}
-    	}
-    	else {
-    		this.mPrefMgr.setPreference("AUTO_SELECT",(String)b.getHint());
-    		b.setText(new_text_value);
-    	}
-    }
-    
-    private void initAutoButton(Button button,String name) {
-    	button.setText(this.getDefaultAutoButtonText(name));
-    	button.setHint(name);
-    	button.setOnClickListener(new OnClickListener() {
-    	      public void onClick(View v) {
-    	    	  saveAuto((Button)v);
-    	      }
-    	});
-    }
 
     @Override
     public void onStart() {
@@ -264,7 +221,7 @@ public class DeviceListActivity extends Activity {
     	
         @Override
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-            BluetoothDevice device = deviceList.get(position);
+            //BluetoothDevice device = deviceList.get(position);
             mBluetoothAdapter.stopLeScan(mLeScanCallback);
   
             Bundle b = new Bundle();
@@ -311,7 +268,8 @@ public class DeviceListActivity extends Activity {
             return position;
         }
 
-        @Override
+        @SuppressLint("InflateParams")
+		@Override
         public View getView(int position, View convertView, ViewGroup parent) {
             ViewGroup vg;
 
@@ -354,8 +312,5 @@ public class DeviceListActivity extends Activity {
             }
             return vg;
         }
-    }
-    private void showMessage(String msg) {
-        Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
     }
 }

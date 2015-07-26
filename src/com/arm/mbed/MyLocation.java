@@ -8,21 +8,25 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.location.LocationListener;
 import android.os.Bundle;
+import android.util.Log;
 
 public class MyLocation extends TimerTask implements LocationListener {
+	public static final String TAG = "PROXY";
 	private boolean haveLocation = false;
 	private String location = "";
 	private boolean enabled = false;
 	private Location myLocation = null;
 	private LocationManager lm = null;
 	private Timer timer1 = null;
+	private static int TIMER_STARTUP_DELAY_MS = 5000;			// delay the timer initially for 5 seconds
 	private static int DEFAULT_TIMER_INTERVAL_MS = 10000;		// query for location every 10 seconds
 	
 	// constructor
 	public MyLocation(Context context) {
 		this.myLocation = null;
+		this.location = "0.0:0.0:-1.0:-1.0";
 		this.initLocationListener(context);
-		this.initTimer();
+		if (this.enabled) this.initTimer();
 	}
 	
 	private void initLocationListener(Context context) {
@@ -31,9 +35,10 @@ public class MyLocation extends TimerTask implements LocationListener {
 	}
 	
 	private void initTimer() {
-		if (this.timer1 != null) this.timer1.cancel();
-		this.timer1 = new Timer();
-		this.timer1.schedule(this,0,MyLocation.DEFAULT_TIMER_INTERVAL_MS);
+		if (this.enabled && this.timer1 == null) {
+			this.timer1 = new Timer();
+			this.timer1.schedule(this,MyLocation.TIMER_STARTUP_DELAY_MS,MyLocation.DEFAULT_TIMER_INTERVAL_MS);
+		}
 	}
 	
 	private boolean checkEnabled() {
@@ -54,17 +59,15 @@ public class MyLocation extends TimerTask implements LocationListener {
 	}
 	
 	private void parseLocation() {
-		// disabled by default
-		this.location = "0.0:0.0:-1.0:-1.0";
-		if (this.enabled) {
-			this.location = "0.0:0.0:0.0:0.0";
-			if (this.haveLocation) {
-				this.location = "" + this.myLocation.getLatitude() + ":" +  
-									 this.myLocation.getLongitude() + ":" +
-									 this.myLocation.getAltitude() + ":" +
-									 this.myLocation.getSpeed();
-			}
+		if (this.enabled && this.haveLocation) {
+			this.location = "" + String.format("%.5f",this.myLocation.getLatitude()) + ":" +  
+								 String.format("%.5f",this.myLocation.getLongitude()) + ":" +
+								 String.format("%.1f",this.myLocation.getAltitude()) + ":" +
+								 String.format("%.1f",this.myLocation.getSpeed());
 		}
+		
+		// DEBUG
+		Log.d(TAG,"Location: " + this.location);
 	}
 	
 	private void updateLocation(Location location) {
@@ -81,10 +84,9 @@ public class MyLocation extends TimerTask implements LocationListener {
 	@Override
 	public void onLocationChanged(Location location) {
 		// TODO Auto-generated method stub
-		if (this.timer1 != null) this.timer1.cancel();
 		if (this.lm != null) this.lm.removeUpdates(this);
 		this.updateLocation(location);
-		this.initTimer();
+		this.parseLocation();
 	}
 
 	@Override
@@ -107,9 +109,6 @@ public class MyLocation extends TimerTask implements LocationListener {
 
 	@Override
 	public void run() {
-		// cancel the timer
-		this.timer1.cancel();
-		
 		Location gps_loc = null;
 		Location net_loc = null;
 		Location last_loc = null;
@@ -132,5 +131,6 @@ public class MyLocation extends TimerTask implements LocationListener {
 		
 		// update our location
 		this.updateLocation(last_loc);
+		this.parseLocation();
 	}
 }

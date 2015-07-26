@@ -1,5 +1,6 @@
 package com.arm.mbed;
 
+import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
@@ -9,7 +10,7 @@ import android.util.Base64;
 import android.util.Log;
 
 public class UartRPC {
-	public static final String      TAG = "UARTUDPPROXY";
+	public static final String      TAG = "PROXY";
 	private static final String		_DELIMITER = "\\|";
 	private static final String		_HEAD = "[";
 	private static final String		_TAIL = "]";
@@ -19,11 +20,11 @@ public class UartRPC {
 	private static final int 	    SOCKET_CLOSE_FN = 0x02;
 	private static final int 	    SEND_DATA_FN    = 0x04;
 	private static final int 	    RECV_DATA_FN    = 0x08;
-	private static final int 	    GET_LOCATION_FN = 0x08;
+	private static final int 	    GET_LOCATION_FN = 0x16;
 	
 	// UDP Socket Config
-	private static final int	    SOCKET_TIMEOUT_MS = 10000;			// 10 seconds
-	private static final int		SOCKET_BUFFER_SIZE = 4096;			// socket buffer size
+	private static final int	    SOCKET_TIMEOUT_MS = 120000;			// 120 seconds
+	private static final int		SOCKET_BUFFER_SIZE = 8192;			// socket buffer size
 	
 	private InetAddress 			m_address = null;
 	private int    					m_port = 0;
@@ -36,7 +37,6 @@ public class UartRPC {
 	
 	private String					m_args = "";
 	private String					m_accumulator = "";
-	private String					m_response = "";
 	private int						m_fn_id = 0;
 	
 	private boolean					m_send_status = false;
@@ -44,9 +44,19 @@ public class UartRPC {
 	private MyLocation			    m_location = null;
 				
 	public UartRPC(UartRPCCallbacks handler,Context context) {
+		this(context);
+		this.setCallbackHandler(handler);
+	}
+	
+	public UartRPC(Context context) {
 		this.reset();
-		this.m_handler = handler;
+		this.m_handler = null;
 		this.m_location = new MyLocation(context);
+		this.m_location.updateLocation();
+	}
+	
+	public void setCallbackHandler(UartRPCCallbacks handler) {
+		this.m_handler = handler;
 	}
 	
 	private void stopListener() {
@@ -58,7 +68,7 @@ public class UartRPC {
 				this.m_listener = null;
 			}
 			catch (Exception ex) {
-				Log.d(TAG, "stopListener(): exception caught during listener thread stop(): " + ex.getMessage());
+				Log.w(TAG, "stopListener(): exception caught during listener thread stop(): " + ex.getMessage());
 			}
 		}
 	}
@@ -66,7 +76,6 @@ public class UartRPC {
 	private void reset() {
 		this.m_args = "";
 		this.m_accumulator = "";
-		this.m_response = "";
 		this.m_fn_id = 0;
 	}
 	
@@ -89,10 +98,10 @@ public class UartRPC {
 			}
 		}
 		else if (data != null) {
-			Log.d(TAG, "accumulate(): data length is 0... ignoring...");
+			Log.w(TAG, "accumulate(): data length is 0... ignoring...");
 		}
 		else {
-			Log.d(TAG, "accumulate(): data is NULL... ignoring...");
+			Log.w(TAG, "accumulate(): data is NULL... ignoring...");
 		}
 		
 		return do_dispatch;
@@ -116,7 +125,8 @@ public class UartRPC {
 		// slot 0 is the RPC command fn id, slot 1 is the RPC args...
 		try {
 			this.m_fn_id = Integer.parseInt(rpc_call[0]);
-			this.m_args = rpc_call[1];
+			this.m_args = "";
+			if (rpc_call.length > 1) this.m_args = rpc_call[1];
 			Log.d(TAG,"dispatch(): fn_id=" + this.m_fn_id + " args: [" + this.m_args + "]");
 			
 			// dispatch to appropriate function for processing
@@ -135,12 +145,12 @@ public class UartRPC {
 					success = this.rpc_send_data(this.m_args);
 					break;
 				default:
-					Log.d(TAG,"dispatch(): IMPROPER fn_id=" + this.m_fn_id + " args: [" + this.m_args + "]... ignoring...");
+					Log.w(TAG,"dispatch(): IMPROPER fn_id=" + this.m_fn_id + " args: [" + this.m_args + "]... ignoring...");
 					break;
 			}
 		}
 		catch (Exception ex) {
-			Log.d(TAG,"dispatch(): Exception in dispatch(): " + ex.getMessage());
+			Log.e(TAG,"dispatch(): Exception in dispatch(): " + ex.getMessage());
 			ex.printStackTrace();
 		}
 		
@@ -149,6 +159,22 @@ public class UartRPC {
 		
 		// return our status
 		return success;
+	}
+	
+	private DatagramSocket createSocket() {
+		DatagramSocket socket = null;
+		try {
+			socket = new DatagramSocket(this.m_port);
+			socket.setSoTimeout(SOCKET_TIMEOUT_MS);
+			socket.setReceiveBufferSize(SOCKET_BUFFER_SIZE);
+			socket.setSendBufferSize(SOCKET_BUFFER_SIZE);
+			socket.setBroadcast(false);
+			socket.setReuseAddress(true);
+		}
+		catch (Exception ex) {
+			Log.e(TAG,"createSocket(): Socket Creation failed! " + ex.getMessage());
+		}
+		return socket;
 	}
 	
 	// RPC: open_socket()
@@ -161,35 +187,31 @@ public class UartRPC {
 			this.m_port = Integer.parseInt(args[1]);
 			
 			// open the socket... 
-			Log.d(TAG, "rpc_open_socket(): opening UDP Socket: " + args[0].trim() + "@" + this.m_port);
-			this.m_socket = new DatagramSocket(this.m_port);
-			this.m_socket.setSoTimeout(SOCKET_TIMEOUT_MS);
-			this.m_socket.setReceiveBufferSize(SOCKET_BUFFER_SIZE);
-			this.m_socket.setSendBufferSize(SOCKET_BUFFER_SIZE);
-			this.m_socket.setBroadcast(false);
-			this.m_socket.setReuseAddress(true);
+			Log.d(TAG, "rpc_open_socket(): opening UDP Send Socket: " + args[0].trim() + "@" + this.m_port);
+			this.m_socket = this.createSocket();
+			
 			Log.d(TAG, "rpc_open_socket(): creating the listeners...");
 			this.createListener();
 			
 			return true;
 		}
 		catch(Exception ex) {
-			Log.d(TAG, "rpc_open_socket(): openSocket() failed: " + ex.getMessage() + "... closing...");
+			Log.e(TAG, "rpc_open_socket(): openSocket() failed: " + ex.getMessage() + "... closing...");
 			this.rpc_socket_close(null);
 		}
 		
 		return false;
 	}
-
-	public void close() { this.rpc_socket_close(null); }
 	
-	// RPC: close_socket()
+	// RPC: get_rpc_location()
 	private boolean rpc_get_location(String args) {
-		boolean status = false;
-		
+		boolean status = false;	
+		Log.d(TAG,"rpc_get_location(): in rpc_get_location...");
 		try {
 			// get the current location
 			String location_payload = this.m_location.getLocation();
+			
+			Log.d(TAG,"rpc_get_location(): location: " + location_payload);
 			
 			// encode
 			byte data[] = location_payload.getBytes();
@@ -206,7 +228,7 @@ public class UartRPC {
 			if (status == true)
 				Log.d(TAG,"rpc_get_location(): location sent successfully");
 			else 
-				Log.d(TAG,"rpc_get_location(): location send FAILED");
+				Log.e(TAG,"rpc_get_location(): location send FAILED");
 		}
 		catch (Exception ex) {
 			Log.d(TAG,"rpc_get_location(): sendOverUART failed: " + ex.getMessage());
@@ -214,6 +236,8 @@ public class UartRPC {
 		
 		return status;	
 	}
+	
+	public void close() { this.rpc_socket_close(null); }
 	
 	// RPC: close_socket()
 	private boolean rpc_socket_close(String args) {
@@ -230,8 +254,9 @@ public class UartRPC {
     private void closeSocket() {
     	if (this.m_socket != null) {
     		this.m_socket.close();
-    		this.m_socket.disconnect();
     	}
+    	
+    	Log.e("CLOSE","setting socket to NULL...");
     	this.m_socket = null;
     }
 	
@@ -243,24 +268,33 @@ public class UartRPC {
 				public synchronized void run() {
 					byte[] receiveData = new byte[SOCKET_BUFFER_SIZE];
 					while (m_do_run_listener) {
-						DatagramPacket p = new DatagramPacket(receiveData,receiveData.length);
 						Log.d(TAG, "listener(): waiting on receive()...");
 						try {
-							m_socket.receive(p);
-							Log.d(TAG, "listener(): received data... processing...");
-							byte[] data = p.getData();
-							int data_length = p.getLength();
-							if (data != null && data.length > 0) {
-								Log.d(TAG, "listener(): data length: " + data_length + " (data.length=" + data_length + ") ... sending over UART...");
-								m_handler.sendOverUART(data,data_length);
-								Log.d(TAG, "listener(): send over UART completed");
+							DatagramPacket p = new DatagramPacket(receiveData,receiveData.length);
+							if (m_socket != null) {
+								m_socket.receive(p);
+								Log.d(TAG, "listener(): received data... processing...");
+								byte[] data = p.getData();
+								int data_length = p.getLength();
+								if (data != null && data.length > 0) {
+									Log.d(TAG, "listener(): data length: " + data_length + " (data.length=" + data_length + ") ... sending over UART...");
+									m_handler.sendOverUART(data,data_length);
+									Log.d(TAG, "listener(): send over UART completed");
+								}
 							}
+							else {
+								Log.w(TAG, "listener(): socket not initialized yet (OK)");
+							}
+							
 						}
 						catch (java.net.SocketTimeoutException ex) {
-							Log.d(TAG, "listener(): timed out... retrying receive...");
+							Log.w(TAG, "listener(): timed out... retrying receive...");
 			        	}
-						catch (Exception ex) {
-							Log.d(TAG, "listener(): exception during receive(): " + ex.getMessage());
+						catch (IOException ex) {
+							Log.e(TAG, "listener(): IO exception during receive(): " + ex.getMessage());
+						}
+						catch (NullPointerException ex) {
+							Log.e(TAG, "listener(): Null Pointer exception during receive(): " + ex.getMessage());
 							ex.printStackTrace();
 						}
 					}
@@ -273,7 +307,7 @@ public class UartRPC {
 				this.m_listener_thread.start();
 			}
 			catch (Exception ex) {
-				Log.d(TAG, "listener(): exception during thread start(): " + ex.getMessage()); 
+				Log.e(TAG, "listener(): exception during thread start(): " + ex.getMessage()); 
 			}
 		}
 	}
@@ -313,18 +347,21 @@ public class UartRPC {
 						Log.d(TAG, "send() successful.");
 		        	}
 					catch (Exception ex) {
-						Log.d(TAG, "send() failed: " + ex.getMessage());
+						Log.e(TAG, "send() failed: " + ex.getMessage());
 						//ex.printStackTrace();
 					}
 			    }
 			});
 			thread.start();
 		}
-		else if (this.m_socket != null) {
-			Log.d(TAG, "send() failed: as data was null or had zero length");
+		else if (this.m_socket != null && raw_bytes != null) {
+			Log.e(TAG, "ERROR: send() failed: as data had zero length");
+		}
+		else if (this.m_socket != null ) {
+			Log.e(TAG, "ERROR: send() failed: as data was NULL");
 		}
 		else {
-			Log.d(TAG, "send() failed: as socket was null");
+			Log.e(TAG, "ERROR: send() failed: as socket was null");
 		}
 		return this.m_send_status;
 	}
@@ -335,10 +372,10 @@ public class UartRPC {
 			return Base64.decode(b64_data, Base64.DEFAULT);
 		}
 		catch (Exception ex) {
-			Log.d(TAG,"decode() caught exception while trying to decode: [" + data + "]. length: " + data.length() + " Message: " + ex.getMessage());
+			Log.e(TAG,"decode() caught exception while trying to decode: [" + data + "]. length: " + data.length() + " Message: " + ex.getMessage());
 			ex.printStackTrace();
 			
-			Log.d(TAG,"decode() (EXCEPTION): just returning input data: [" + data + "]...");
+			Log.e(TAG,"decode() (EXCEPTION): just returning input data: [" + data + "]...");
 			byte[] raw_data = data.getBytes();
 			return raw_data;
 		}
@@ -350,7 +387,7 @@ public class UartRPC {
 			return new String(encoded,"UTF-8");
 		}
 		catch (Exception ex) { 
-			Log.d(TAG,"encode() caught exception while trying to encode " + length + " bytes. Exception: " + ex.getMessage());
+			Log.e(TAG,"encode() caught exception while trying to encode " + length + " bytes. Exception: " + ex.getMessage());
 			ex.printStackTrace();
 		}
 		return null;

@@ -45,13 +45,13 @@ import com.arm.mbed.UartRPCCallbacks;
  * given Bluetooth LE device.
  */
 public class UartService extends Service implements UartRPCCallbacks {
-	public static final String TAG = "UARTUDPPROXY";
+	public static final String TAG = "PROXY";
 
     private BluetoothManager mBluetoothManager;
     private BluetoothAdapter mBluetoothAdapter;
     private String mBluetoothDeviceAddress;
     private BluetoothGatt mBluetoothGatt;
-    private int mConnectionState = STATE_DISCONNECTED;
+    protected int mConnectionState = STATE_DISCONNECTED;
     
     // DA
     private UartRPC m_uart_rpc = null;
@@ -110,8 +110,7 @@ public class UartService extends Service implements UartRPCCallbacks {
         @Override
         public void onServicesDiscovered(BluetoothGatt gatt, int status) {
             if (status == BluetoothGatt.GATT_SUCCESS) {
-            	Log.w(TAG, "mBluetoothGatt = " + mBluetoothGatt );
-            	
+            	Log.w(TAG, "mBluetoothGatt: " + mBluetoothGatt );
                 broadcastUpdate(ACTION_GATT_SERVICES_DISCOVERED);
             } else {
                 Log.w(TAG, "onServicesDiscovered received: " + status);
@@ -154,10 +153,16 @@ public class UartService extends Service implements UartRPCCallbacks {
         // DA
         onDataReceived(characteristic.getStringValue(0));
     }
+    
+    public UartService setUartRPC(UartRPC rpc) {
+    	this.m_uart_rpc = rpc;
+    	this.m_uart_rpc.setCallbackHandler(this);
+    	return this;
+    }
 
     public class LocalBinder extends Binder {
-        UartService getService() {
-            return UartService.this;
+        UartService getService(UartRPC rpc) {
+            return UartService.this.setUartRPC(rpc);
         }
     }
 
@@ -185,7 +190,6 @@ public class UartService extends Service implements UartRPCCallbacks {
     public boolean initialize(MainActivity ui) {
     	// DA
     	this.m_ui = ui;
-    	new UartRPC(this,this.m_ui.getApplicationContext());
     	
         // For API level 18 and above, get a reference to BluetoothAdapter through
         // BluetoothManager.
@@ -271,6 +275,7 @@ public class UartService extends Service implements UartRPCCallbacks {
      * released properly.
      */
     public void close() {
+    	this.disconnect();
         if (mBluetoothGatt == null) {
             return;
         }
@@ -294,30 +299,6 @@ public class UartService extends Service implements UartRPCCallbacks {
         }
         mBluetoothGatt.readCharacteristic(characteristic);
     }
-
-    /**
-     * Enables or disables notification on a give characteristic.
-     *
-     * @param characteristic Characteristic to act on.
-     * @param enabled If true, enable notification.  False otherwise.
-     */
-    /*
-    public void setCharacteristicNotification(BluetoothGattCharacteristic characteristic,
-                                              boolean enabled) {
-        if (mBluetoothAdapter == null || mBluetoothGatt == null) {
-            Log.w(TAG, "BluetoothAdapter not initialized");
-            return;
-        }
-        mBluetoothGatt.setCharacteristicNotification(characteristic, enabled);
-
-                
-        if (UUID_HEART_RATE_MEASUREMENT.equals(characteristic.getUuid())) {
-            BluetoothGattDescriptor descriptor = characteristic.getDescriptor(
-                    UUID.fromString(SampleGattAttributes.CLIENT_CHARACTERISTIC_CONFIG));
-            descriptor.setValue(BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE);
-            mBluetoothGatt.writeDescriptor(descriptor);
-        }
-    }*/
     
     /**
      * Enable TXNotification
@@ -326,13 +307,6 @@ public class UartService extends Service implements UartRPCCallbacks {
      */
     public void enableTXNotification()
     { 
-    	/*
-    	if (mBluetoothGatt == null) {
-    		showMessage("mBluetoothGatt null" + mBluetoothGatt);
-    		broadcastUpdate(DEVICE_DOES_NOT_SUPPORT_UART);
-    		return;
-    	}
-    		*/
     	BluetoothGattService RxService = mBluetoothGatt.getService(RX_SERVICE_UUID);
     	if (RxService == null) {
             showMessage("Rx service not found!");
@@ -355,10 +329,8 @@ public class UartService extends Service implements UartRPCCallbacks {
     
     public void writeRXCharacteristic(byte[] value)
     {
-    
-    	
     	BluetoothGattService RxService = mBluetoothGatt.getService(RX_SERVICE_UUID);
-    	showMessage("mBluetoothGatt null"+ mBluetoothGatt);
+    	showMessage("mBluetoothGatt: "+ mBluetoothGatt);
     	if (RxService == null) {
             showMessage("Rx service not found!");
             broadcastUpdate(DEVICE_DOES_NOT_SUPPORT_UART);
@@ -377,8 +349,9 @@ public class UartService extends Service implements UartRPCCallbacks {
     }
     
     private void showMessage(String msg) {
-        Log.e(TAG, msg);
+        Log.d(TAG, msg);
     }
+    
     /**
      * Retrieves a list of supported GATT services on the connected device. This should be
      * invoked only after {@code BluetoothGatt#discoverServices()} completes successfully.
@@ -449,7 +422,7 @@ public class UartService extends Service implements UartRPCCallbacks {
 	public void sendOverUART(byte[] data, int length) {
 		String packet = this.m_uart_rpc.rpc_recv_data(data,length);
 		if (packet != null) {
-			Log.d(TAG, "sendOverUART(): encoded_data=[" + packet + "] length: " + packet.length() + "... splitting...");
+			Log.d(TAG, "sendOverUART(): encoded_data=[" + packet + "] length: " + packet.length() + "... splitting and sending...");
 			this.splitAndSendData(packet);
 		}
 		else {
