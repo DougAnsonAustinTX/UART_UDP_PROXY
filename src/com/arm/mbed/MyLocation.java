@@ -18,8 +18,8 @@ public class MyLocation extends TimerTask implements LocationListener {
 	private Location myLocation = null;
 	private LocationManager lm = null;
 	private Timer timer1 = null;
-	private static int TIMER_STARTUP_DELAY_MS = 5000;			// delay the timer initially for 5 seconds
-	private static int DEFAULT_TIMER_INTERVAL_MS = 10000;		// query for location every 10 seconds
+	private static int TIMER_STARTUP_DELAY_MS = 10000;			// delay the timer initially for 10 seconds
+	private static int DEFAULT_TIMER_INTERVAL_MS = 20000;		// query for location every 30 seconds
 	
 	// constructor
 	public MyLocation(Context context) {

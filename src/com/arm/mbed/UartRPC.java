@@ -23,7 +23,7 @@ public class UartRPC {
 	private static final int 	    GET_LOCATION_FN = 0x16;
 	
 	// UDP Socket Config
-	private static final int	    SOCKET_TIMEOUT_MS = 120000;			// 120 seconds
+	private static final int	    SOCKET_TIMEOUT_MS = 5000;			// 5 seconds
 	private static final int		SOCKET_BUFFER_SIZE = 8192;			// socket buffer size
 	
 	private InetAddress 			m_address = null;

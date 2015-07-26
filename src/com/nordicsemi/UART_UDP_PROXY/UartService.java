@@ -438,7 +438,7 @@ public class UartService extends Service implements UartRPCCallbacks {
 			
 			// if we received an ACK... we will ignore it... 
 			if (trimmed_data.equalsIgnoreCase("ACK") == false) {
-				Log.d(TAG, "onDataReceived(): data=[" + trimmed_data + "] length: " + trimmed_data.length());
+				Log.d(TAG, "onDataReceived(): data: " + trimmed_data + " length: " + trimmed_data.length());
 				if (this.m_uart_rpc.accumulate(trimmed_data)) {
 					this.m_ui.logAction("UART", "UDP", this.m_uart_rpc.getAccumulation().getBytes());
 					this.m_uart_rpc.dispatch();
