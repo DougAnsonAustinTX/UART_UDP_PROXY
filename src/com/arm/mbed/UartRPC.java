@@ -266,10 +266,10 @@ public class UartRPC {
 			this.m_listener = new Runnable() {
 				@Override
 				public synchronized void run() {
-					byte[] receiveData = new byte[SOCKET_BUFFER_SIZE];
 					while (m_do_run_listener) {
 						Log.d(TAG, "listener(): waiting on receive()...");
 						try {
+							byte[] receiveData = new byte[SOCKET_BUFFER_SIZE];
 							DatagramPacket p = new DatagramPacket(receiveData,receiveData.length);
 							if (m_socket != null) {
 								m_socket.receive(p);
@@ -394,6 +394,12 @@ public class UartRPC {
 	}
 	
 	public String trimData(String data) {
-		return data.replace("[\n\n]","").replace("[\n]","").trim();
+		String trimmed_data = "";
+		if (data != null && data.length() > 0) {
+			for(int i=0;i<data.length();++i) {
+				if (data.charAt(i) != '\n') trimmed_data += data.charAt(i);
+			}
+		}
+		return trimmed_data.trim();
 	}
 }
