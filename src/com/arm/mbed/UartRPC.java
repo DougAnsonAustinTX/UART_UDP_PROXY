@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
 
 import android.content.Context;
 import android.util.Base64;
@@ -23,14 +24,15 @@ public class UartRPC {
 	private static final int 	    GET_LOCATION_FN = 0x16;
 	
 	// UDP Socket Config
-	private static final int	    SOCKET_TIMEOUT_MS = 5000;			// 5 seconds
-	private static final int		SOCKET_BUFFER_SIZE = 8192;			// socket buffer size
+	private static final int	    SOCKET_TIMEOUT_MS = 10000;			// 10 seconds
+	private static final int		SOCKET_BUFFER_SIZE = 2048;			// socket buffer size
 	
 	private InetAddress 			m_address = null;
 	private int    					m_port = 0;
 	
 	private UartRPCCallbacks        m_handler = null;
 	private DatagramSocket 			m_socket = null;
+	private boolean					m_connected = false;
 	private Runnable 				m_listener = null;
 	private Thread				    m_listener_thread = null;
 	private boolean					m_do_run_listener = false;
@@ -134,12 +136,14 @@ public class UartRPC {
 				case SOCKET_OPEN_FN: 
 					success = this.rpc_socket_open(this.m_args);
 					this.m_handler.ackSocketOpen(success);
+					this.m_connected = success;
 					break;
 				case GET_LOCATION_FN:
 					success = this.rpc_get_location(this.m_args);
 					break;
 				case SOCKET_CLOSE_FN:
 					success = this.rpc_socket_close(this.m_args);
+					if (success == true && this.m_connected == true) this.m_connected = false;
 					break;
 				case SEND_DATA_FN:
 					success = this.rpc_send_data(this.m_args);
@@ -177,6 +181,16 @@ public class UartRPC {
 		return socket;
 	}
 	
+	private boolean connectSocket() {
+		try {
+			this.m_socket.connect(this.m_address, this.m_port);
+		}
+		catch (Exception ex) {
+			return false;
+		}
+		return true;
+	}
+	
 	// RPC: open_socket()
 	private boolean rpc_socket_open(String data) {
 		try {
@@ -189,11 +203,22 @@ public class UartRPC {
 			// open the socket... 
 			Log.d(TAG, "rpc_open_socket(): opening UDP Send Socket: " + args[0].trim() + "@" + this.m_port);
 			this.m_socket = this.createSocket();
+			if (this.m_socket == null) {
+				Log.e(TAG,"rpc_open_socket(): socket creation failed.. unable to connect");
+				this.rpc_socket_close(null);
+				return false;
+			}
 			
-			Log.d(TAG, "rpc_open_socket(): creating the listeners...");
-			this.createListener();
-			
-			return true;
+			Log.d(TAG,"rpc_open_socket(): connecting to: " + args[0].trim() + "@" + this.m_port);
+			if (this.connectSocket()) {
+				Log.d(TAG, "rpc_open_socket(): creating the listeners...");
+				this.createListener();
+				return true;
+			}
+			else {
+				Log.e(TAG,"rpc_socket_open(): connect to: " + args[0].trim() + "@" + this.m_port + " FAILED");
+				this.rpc_socket_close(null);
+			}
 		}
 		catch(Exception ex) {
 			Log.e(TAG, "rpc_open_socket(): openSocket() failed: " + ex.getMessage() + "... closing...");
@@ -253,11 +278,9 @@ public class UartRPC {
 		
     private void closeSocket() {
     	if (this.m_socket != null) {
-    		this.m_socket.close();
+    		Log.d(TAG, "closeSocket(): closing socket...");
+			m_socket.close();
     	}
-    	
-    	Log.e("CLOSE","setting socket to NULL...");
-    	this.m_socket = null;
     }
 	
 	private void createListener() {
@@ -328,41 +351,74 @@ public class UartRPC {
 	public boolean rpc_send_data(String data) {
 		this.m_send_status = false;
 		
-		// decode out of Base64...
-		byte[] raw_bytes = this.decode(data);
-		
-		// create a UDP datagram...
-		this.m_send_packet = new DatagramPacket(raw_bytes,raw_bytes.length,this.m_address,this.m_port);
-		
-		// dispatch a thread off the main UI thread if everything is OK...
-		if (this.m_socket != null && raw_bytes != null && raw_bytes.length > 0) {			
-			// spawn a thread to handle this to get off the UI thread
-			Thread thread = new Thread(new Runnable(){
-			    @Override
-			    public synchronized void run() {
-		        	try {		    			
-						Log.d(TAG,"send() sending...");
-						m_socket.send(m_send_packet);
-						m_send_status = true;
-						Log.d(TAG, "send() successful.");
-		        	}
-					catch (Exception ex) {
-						Log.e(TAG, "send() failed: " + ex.getMessage());
-						//ex.printStackTrace();
-					}
-			    }
-			});
-			thread.start();
+		// make sure we have data to send... 
+		if (data != null && data.length() > 0) {
+			// decode out of Base64...
+			byte[] raw_bytes = this.decode(data);
+					
+			// dispatch a thread off the main UI thread if everything is OK...
+			if (this.m_connected == true && this.m_socket != null && raw_bytes != null && raw_bytes.length > 0) {
+				// create a UDP datagram...
+				this.m_send_packet = new DatagramPacket(raw_bytes,raw_bytes.length,this.m_address,this.m_port);
+	
+				// spawn a thread to handle this to get off the UI thread
+				Thread thread = new Thread(new Runnable(){
+				    @Override
+				    public synchronized void run() {
+			        	try {		    			
+							Log.d(TAG,"send() sending...");
+							m_socket.send(m_send_packet);
+							m_send_status = true;
+							Log.d(TAG, "send() successful.");
+			        	}
+						catch (SocketException ex) {
+							Log.w(TAG, "send() failed SocketException: " + ex.getMessage());
+							
+							// reconnecting
+							Log.d(TAG,"reconnecting.... address: " + m_address + " port: " + m_port);
+							if (connectSocket()) {
+								Log.d(TAG,"send(): reconnected... resending...");
+								try {
+									m_socket.send(m_send_packet);
+									m_send_status = true;
+									Log.d(TAG, "send() successful.");
+								}
+								catch (Exception ex2) {
+									Log.w(TAG, "send() resend failed.. giving up: " + ex2.getMessage());
+								}
+							}
+						}
+			        	catch (IOException ex) {
+			        		Log.e(TAG, "send() failed IOException: " + ex.getMessage());
+			   			    //ex.printStackTrace();
+			        	}
+				   }
+				});
+				thread.start();
+			}
+			else if (this.m_connected == true && this.m_socket != null && raw_bytes != null) {
+				Log.e(TAG, "send() failed: decoded data to send has zero length");
+			}
+			else if (this.m_connected == true && this.m_socket != null) {
+				Log.e(TAG, "send() failed: decoded data to send was NULL");
+			}
+			else if (this.m_connected == true) {
+				Log.e(TAG, "send() failed: socket handle was NULL");
+			}
+			else {
+				Log.e(TAG, "send() ignored: not connected (OK)");
+				this.connectSocket();
+			}
 		}
-		else if (this.m_socket != null && raw_bytes != null) {
-			Log.e(TAG, "ERROR: send() failed: as data had zero length");
-		}
-		else if (this.m_socket != null ) {
-			Log.e(TAG, "ERROR: send() failed: as data was NULL");
+		else if (data != null) {
+			// no data to send
+			Log.w(TAG, "send() input data has zero length... not sending...");
 		}
 		else {
-			Log.e(TAG, "ERROR: send() failed: as socket was null");
+			// data is NULL
+			Log.w(TAG, "send() input data is NULL... not sending...");
 		}
+		
 		return this.m_send_status;
 	}
 	

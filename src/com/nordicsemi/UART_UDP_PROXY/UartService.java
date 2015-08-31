@@ -264,7 +264,6 @@ public class UartService extends Service implements UartRPCCallbacks {
             return;
         }
         mBluetoothGatt.disconnect();
-        // mBluetoothGatt.close();
         
         // DA
         this.disconnectSocket();
@@ -283,6 +282,10 @@ public class UartService extends Service implements UartRPCCallbacks {
         mBluetoothDeviceAddress = null;
         mBluetoothGatt.close();
         mBluetoothGatt = null;
+        
+        // DA
+        this.m_uart_rpc = new UartRPC(this);
+        this.m_uart_rpc.setCallbackHandler(this);
     }
 
     /**

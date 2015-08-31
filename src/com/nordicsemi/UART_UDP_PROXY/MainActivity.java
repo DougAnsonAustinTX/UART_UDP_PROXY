@@ -136,6 +136,9 @@ public class MainActivity extends Activity implements RadioGroup. OnCheckedChang
         				 	messageListView.smoothScrollToPosition(0);
         				 	listAdapter.notifyDataSetChanged();
         				 	messageListView.invalidateViews();
+        				 	
+        				 	// clear 
+        				 	mService.close();
         				}
         			}
                 }
@@ -205,11 +208,7 @@ public class MainActivity extends Activity implements RadioGroup. OnCheckedChang
                          ((TextView) findViewById(R.id.deviceName)).setText("Not Connected");
                          listAdapter.add("["+currentDateTimeString+"] Disconnected from: "+ mDevice.getName());
                          mState = UART_PROFILE_DISCONNECTED;
-                         mService.close();
-                         //setUiState();
-                         
-                         // DA
-                         mService.disconnectSocket();  
+                         if (mService != null) mService.close();
                      }
                  });
             }
@@ -317,7 +316,7 @@ public class MainActivity extends Activity implements RadioGroup. OnCheckedChang
                
                 Log.d(TAG, "... onActivityResultdevice.address==" + mDevice + "mserviceValue" + mService);
                 ((TextView) findViewById(R.id.deviceName)).setText(mDevice.getName()+ " - connecting");
-                mService.connect(deviceAddress);
+                if (mService != null) mService.connect(deviceAddress);
                             
 
             }
