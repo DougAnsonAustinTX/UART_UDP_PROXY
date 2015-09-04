@@ -183,12 +183,16 @@ public class UartRPC {
 	
 	private boolean connectSocket() {
 		try {
+			Log.d(TAG, "connectSocket(): opening UDP Send Socket: " + this.m_address + "@" + this.m_port);
 			this.m_socket.connect(this.m_address, this.m_port);
+			this.m_connected = true;
+			Log.d(TAG, "connectSocket(): opening UDP Send Socket CONNECTED to: " + this.m_address + "@" + this.m_port);
 		}
 		catch (Exception ex) {
-			return false;
+			this.m_connected = false;
+			Log.e(TAG, "connectSocket(): UDP Socket connect FAILED: " + this.m_address + "@" + this.m_port);
 		}
-		return true;
+		return this.m_connected;
 	}
 	
 	// RPC: open_socket()
@@ -406,8 +410,9 @@ public class UartRPC {
 				Log.e(TAG, "send() failed: socket handle was NULL");
 			}
 			else {
-				Log.e(TAG, "send() ignored: not connected (OK)");
+				//Log.e(TAG, "send() ignored: not connected (OK)... trying to reconnect...");
 				this.connectSocket();
+				//this.rpc_send_data(data);
 			}
 		}
 		else if (data != null) {
