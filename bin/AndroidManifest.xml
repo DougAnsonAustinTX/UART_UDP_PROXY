@@ -16,8 +16,8 @@
 
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.nordicsemi.UART_UDP_PROXY"
-    android:versionCode="2"
-    android:versionName="1.0.3" >
+    android:versionCode="4"
+    android:versionName="1.0.4" >
 
     <uses-sdk
         android:minSdkVersion="18"
